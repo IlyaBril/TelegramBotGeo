@@ -3,13 +3,16 @@ import requests
 
 def _make_response(method: str, url: str, headers: dict, params: dict,
                    timeout: int, success=200):
-    response = requests.request(
-        method,
-        url,
-        headers=headers,
-        params=params,
-        timeout=timeout
-    )
+    try:
+        response = requests.request(
+            method,
+            url,
+            headers=headers,
+            params=params,
+            timeout=timeout
+        )
+    except Exception as err:
+        return 
 
     status_code = response.status_code
 
