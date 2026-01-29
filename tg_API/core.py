@@ -1,8 +1,9 @@
 import telebot
-from site_API.core import site
+from settings import site
 
 
 API = site.tg_api.get_secret_value()
-URL = "https://api.telegram.org/MyGeobot_bot"
+URL = ("https://api.telegram.org/MyGeoT"
+       "bot_bot")
 
 bot = telebot.TeleBot(API)

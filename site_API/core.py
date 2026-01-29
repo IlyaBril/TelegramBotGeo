@@ -18,7 +18,3 @@ url_geo_rev = "https://api.geoapify.com/v1/geocode/reverse?&format=json&apiKey=3
 params_geo = None
 headers_geo = CaseInsensitiveDict()
 headers_geo["Accept"] = "application/json"
-
-if __name__ == "__main__":
- site_api()
-

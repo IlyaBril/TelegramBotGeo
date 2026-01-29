@@ -1,10 +1,8 @@
 import requests
 from tg_API.handle_location import Updated_location
-from settings import SiteSettings
 from site_API.core import site_api, url_geo, headers_geo, url_geo_rev
 
-site = SiteSettings()
-near_cities = site_api.get_cities_nearby()
+
 tourist_places = site_api.get_tourist_places()
 
 
@@ -54,6 +52,6 @@ class TouristPlaces():
         response = response.json()["features"]
         return response
 
-
-if __name__ == "__main__":
-    TouristPlaces()
+#
+# if __name__ == "__main__":
+#     TouristPlaces()

@@ -1,11 +1,8 @@
 import re
-from settings import SiteSettings
+from settings import site
 from site_API.core import site_api
 from tg_API.core import bot
 from tg_API.places_list import category_list, category_list_eng
-
-site = SiteSettings()
-near_cities = site_api.get_cities_nearby()
 
 
 class CustomerLocation():
@@ -109,8 +106,6 @@ class CustomerLocation():
         return self._category
 
 
-
-
 Updated_location = CustomerLocation()
 
 
@@ -119,8 +114,3 @@ class BotLocation():
     @bot.message_handler(content_types=['location'])
     def handle_location(message):
         Updated_location.set_location(message.location.latitude, message.location.longitude)
-
-
-if __name__ == "__main__":
-    BotLocation()
-    CustomerLocation()

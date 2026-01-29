@@ -8,9 +8,3 @@ crud = CRUDInterface()
 
 db_write = crud.create()
 db_read = crud.retrieve()
-
-
-if __name__ == "__main__":
-    crud()
-
-

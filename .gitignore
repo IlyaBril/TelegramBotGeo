@@ -144,6 +144,7 @@ celerybeat.pid
 
 # Environments
 .env
+.env_t
 .env.dev
 .env.prod
 .envrc
