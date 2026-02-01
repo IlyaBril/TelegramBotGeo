@@ -25,15 +25,6 @@ def _make_response(method: str, url: str, headers: dict,
     return status_code
 
 
-# def _places_near_location(method: str, url: str, headers: dict, params: dict,
-#                           location: tuple, timeout: int, func=_make_response):
-#
-#     url = "{}/{}/nearbyPlaces".format(url, location)
-#     response = func(method, url, headers=headers,
-#                     params=params, timeout=timeout)
-#
-#     return response
-
 def _tourist_places(method: str, url: str, headers: dict,
                     timeout: int, func=_make_response):
 
