@@ -1,60 +1,71 @@
 from database.common.models import db, History
 from database.core import db_write
 from tg_API.handle_location import Updated_location
-from tg_API.places_list import category_list_str
 from tg_API.tourist_places import TouristPlaces
 from .base_handler import BaseHandler
+from .keyboards import InlineKeyboard
 
 
 class BotNealestPlaces(BaseHandler):
     """Handler returns nealest choosen tourists places"""
 
     def register_handlers(self):
+        def get_category(message):
+            self.bot.send_message(message.chat.id, 'Выберите категорию',
+                                  reply_markup=InlineKeyboard.get_categoties())
+            Updated_location.set_command('low_get_category')
+
         @self.bot.message_handler(commands=['low'])
         def low_execute(message):
-            Updated_location.set_command('low_get_category')
-            self.bot.send_message(message.chat.id, 'Введите название или номер категории\n'
-                                              'Введите "0" для списка категорий')
+            get_category(message)
 
-        @self.bot.message_handler(func=lambda message: Updated_location.get_command() == 'low_get_category')
-        def tourist_places_find(message):
-            if message.text == '0':
-                self.bot.send_message(message.chat.id, category_list_str)
-                self.bot.send_message(message.chat.id, 'Введите категорию')
-                db_write(db, History, {'request': "Список категорий из /low"})
-            else:
-                category = Updated_location.set_category(message.text)
-                if category:
-                    Updated_location.set_command('low_get_limit')
-                    self.bot.send_message(message.chat.id, "Введите количество едениц категории (1 - 10).")
+        @self.bot.callback_query_handler(func=(lambda call: call) and (lambda message: Updated_location.get_command() == 'low_get_category'))
+        def get_nealest_places(call):
 
-                else:
-                    self.bot.send_message(message.chat.id,
-                                     'Ошибка. Введите категорию поиска или номер категории,'
-                                     '\nДля списка категорий введите "0"')
+            """ Function requests category from user """
 
+            chat_id = call.message.chat.id
+            message_id = call.message.id
+            self.bot.answer_callback_query(call.id)
+            self.bot.edit_message_text(chat_id=chat_id, message_id=message_id,
+                                       text="Готовится ответ ... ")
 
-        @self.bot.message_handler(func=lambda message: Updated_location.get_command() == 'low_get_limit')
-        def get_limit_func(message):
-            limit = message.text
-            if not limit.isdigit():
-                self.bot.send_message(message.chat.id, "Что-то не так, попробуй ещё раз!")
-                return
-            elif 0 < int(limit) < 10:
-                limit = int(limit)
-                Updated_location.set_limit(limit)
-                Updated_location.set_command(None)
-                receive_response = TouristPlaces().provide_response()
-                answer = TouristPlaces().print_properties(receive_response)
-                self.bot.send_message(message.chat.id, answer)
-                db_text = "Команда: /low\nКатегория: {}" \
-                          "\nКоличество ед.:{}\n".format(Updated_location.get_category(), limit)
-                db_write(db, History, {'request': db_text})
+            Updated_location.set_category_direct(call.data)
 
+            # Получаем список объектов
+            answer = TouristPlaces().provide_response()
 
-                return
-            else:
-                self.bot.send_message(message.chat.id, "Что-то не так! Введите число от 1 до 10!")
-                return
+            self.bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=answer)
 
-            db_write(db, History, {'request': message.text})
+            #Save request data to database
+
+            places_qty = Updated_location.get_limit()
+            db_text = "Команда: /low\nКатегория: {}" \
+                      "\nКоличество ед.:{}\n".format(Updated_location.get_category(), places_qty)
+            db_write(db, History, {'request': db_text})
+            Updated_location.set_command('choose_action')
+            self.bot.send_message(chat_id=chat_id, text='Повторить запрос или вернуться на главную страницу?',
+                                  reply_markup=InlineKeyboard.repeate())
+
+        @self.bot.callback_query_handler(func=lambda call: call.data == 'repeate')
+        def repeate(call):
+            chat_id = call.message.chat.id
+            message_id = call.message.id
+            self.bot.answer_callback_query(call.id)
+            self.bot.edit_message_text(chat_id=chat_id, message_id=message_id, text="Возвращаемся")
+            Updated_location.set_command(None)
+            get_category(call.message)
+
+        @self.bot.callback_query_handler(func=lambda call: call.data == 'return')
+        def return_action(call):
+            chat_id = call.message.chat.id
+            message_id = call.message.id
+            self.bot.answer_callback_query(call.id)
+            text = 'Бот покажет ближайшие туристические объекты\n'\
+                   '/low - ближайшие объекты\n'\
+                   '/high - наиболее удаленные объеты\n'\
+                   '/custom - объеты в диапазоне расстояния ОТ (метров) - ДО (метров)\n'\
+                   '/history - вывод последних 10 запросов'
+
+            self.bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=text)
+            Updated_location.set_command(None)

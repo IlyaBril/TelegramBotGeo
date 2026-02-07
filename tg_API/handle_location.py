@@ -1,15 +1,16 @@
 import re
 from settings import site
-from site_API.core import site_api
+#from site_API.core import site_api
 from tg_API.core import bot
 from tg_API.places_list import category_list, category_list_eng
 
 
-class CustomerLocation():
+class CustomerLocation:
     def __init__(
             self, lat=55.755864, lon=37.617698,
             radius_min=0, radius_max=5000, limit=5,
-            command=None, category=None):
+            command=None, category=None, sort="desc",
+    ):
         self._customer_lat = lat
         self._customer_lon = lon
         self._radius_min = radius_min
@@ -17,6 +18,13 @@ class CustomerLocation():
         self._limit = limit
         self._command = command
         self._category = category
+        self._sort = sort
+
+    def set_category_direct(self, category):
+        self._category = category
+
+    def get_category_direct(self):
+        return self._category
 
     def set_location(self, lat, lon):
         self._customer_lat = lat
@@ -83,9 +91,15 @@ class CustomerLocation():
         return result
 
     def set_category(self, category):
-        # Функция проеверяет запрос категории на правильность
-        # Возвращает категорию в зависимости от формата запроса (слово или цифра)
-        # Категория по названию
+        """
+        Функция проеверяет запрос категории на правильность
+        Возвращает категорию в зависимости от формата запроса (слово или цифра)
+        Категория по названию
+
+        :param category:
+        :return:
+        """
+
         category = category.lower()
         checklist_ru = [i[1].lower() for i in category_list]
         if category.lower() in checklist_ru:

@@ -1,24 +1,29 @@
 import requests
 from tg_API.handle_location import Updated_location
-from site_API.core import site_api, url_geo, headers_geo, url_geo_rev
+from site_API.core import url_geo, headers_geo, url_geo_rev
+from site_API.utils.site_api_handler import SiteApiInterface
 
 
-tourist_places = site_api.get_tourist_places()
+tourist_places = SiteApiInterface.get_tourist_places()
 
 
-class TouristPlaces():
+class TouristPlaces:
+    def reverse_geo(self, lat: int, lon: int):
+        """
+        Ф-ция принимает на вход координаты, возвращает адрес.
+        Нужна, так как в response нет полного адреса объекта
+        """
 
-    def reverse_geo(self, lat, lon):
-        # Ф-ция принимает на вход координаты, возвращает адрес.
-        # Нужна, так как в response нет полного адреса объекта
         url_geo_rev_2 = url_geo_rev + "lat=" + str(lat) + "&lon=" + str(lon)
         resp = requests.get(url_geo_rev_2, headers=headers_geo)
         resp = resp.json()['results'][0]['formatted']
         return resp
 
     def print_properties(self, response: list) -> str:
-        # Ф-ция принимает на вход json твет (response)
-        # по списоку категорий (args) возвращает ответ
+        """
+        Ф-ция принимает на вход json ответ (response)
+        по списоку категорий (args) возвращает ответ для бота
+        """
         args = ['name', 'address', 'distance']
         category = {'name': 'Название', 'address': 'Адрес', 'distance': 'Расстояние'}
         answer = ""
@@ -38,6 +43,7 @@ class TouristPlaces():
 
     def provide_response(self) -> str:
         # запрашивает ответ от API сайта
+
         headers_geo["Accept"] = "application/json"
         location = Updated_location.get_location()
         location = str(location[1]) + ',' + str(location[0])
@@ -47,11 +53,14 @@ class TouristPlaces():
         lang = "ru"
         url_geo2 = "{}{},{}&categories={}&limit={}&lang={}&bias=proximity:{}".format(
             url_geo, location, radius, categories, limit, lang, location)
-        print(url_geo2)
+        print('provide respone url_geo2', url_geo2)
         response = tourist_places("GET", url_geo2, headers_geo, timeout=5)
-        response = response.json()["features"]
-        return response
 
-#
-# if __name__ == "__main__":
-#     TouristPlaces()
+        if hasattr(response, "status_code"):
+            response = response.json()["features"]
+            # Получаем адреса объектов по координатам и говоим финальный ответ
+
+            response = TouristPlaces().print_properties(response)
+        else:
+            return "Объектов с запрошенными параметрами не найдено"
+        return response

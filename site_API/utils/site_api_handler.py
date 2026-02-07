@@ -1,8 +1,14 @@
+from json import JSONDecoder, JSONEncoder
+
 import requests
 
 
 def _make_response(method: str, url: str, headers: dict,
-                   params: dict, timeout: int, success=200):
+                   timeout: int, params=None, success=200):
+    """
+    Function makes request to url and returns response if success
+    or error code
+    """
     try:
         response = requests.request(
             method,
@@ -11,30 +17,20 @@ def _make_response(method: str, url: str, headers: dict,
             params=params,
             timeout=timeout
         )
-    except Exception as err:
-        print('response no places', response)
-        return 
+
+    except Exception as err:  #ReadTimeout
+        print('response no places', err)
+        return 400
 
     status_code = response.status_code
 
     if status_code == success:
         return response
-    print(url)
-    print(headers)
 
     return status_code
 
 
-def _tourist_places(method: str, url: str, headers: dict,
-                    timeout: int, func=_make_response):
-
-    response = func(method, url, headers=headers,
-                    params=None, timeout=timeout)
-    return response
-
-
-class SiteApiInterface():
-
+class SiteApiInterface:
     @staticmethod
     def get_tourist_places():
-        return _tourist_places
+        return _make_response

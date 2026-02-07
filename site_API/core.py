@@ -7,7 +7,7 @@ site = SiteSettings()
 headers = {"X-RapidAPI-Key": site.api_key.get_secret_value(), "X-RapidAPI-Host": site.host_api}
 url = "https://" + site.host_api + "/v1/geo/locations"
 
-site_api = SiteApiInterface()
+#site_api = SiteApiInterface
 
 url_geo = "https://api.geoapify.com/v2/places?&apiKey="\
           + site.geo_api_key + "&conditions=access&filter=circle:"

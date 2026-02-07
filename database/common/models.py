@@ -13,5 +13,6 @@ class ModelBase(pw.Model):
 
 class History(ModelBase):
     request = pw.TextField()
+    #response = pw.TextField()
     id = pw.AutoField(primary_key=True)
 
