@@ -1,6 +1,6 @@
 from tg_API.history import BotHistory
 from tg_API.help import BotHelp
-from tg_API.low import BotNealestPlaces
+from tg_API.search import BotNealestPlaces
 from tg_API.high import BotMostDistantPlaces
 from tg_API.custom import BotCustomDistancePlaces
 from tg_API.core import bot

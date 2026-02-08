@@ -13,13 +13,13 @@ class BotNealestPlaces(BaseHandler):
         def get_category(message):
             self.bot.send_message(message.chat.id, 'Выберите категорию',
                                   reply_markup=InlineKeyboard.get_categoties())
-            Updated_location.set_command('low_get_category')
+            Updated_location.set_command('get_category')
 
-        @self.bot.message_handler(commands=['low'])
+        @self.bot.message_handler(commands=['search'])
         def low_execute(message):
             get_category(message)
 
-        @self.bot.callback_query_handler(func=(lambda call: call) and (lambda message: Updated_location.get_command() == 'low_get_category'))
+        @self.bot.callback_query_handler(func=(lambda call: call) and (lambda message: Updated_location.get_command() == 'get_category'))
         def get_nealest_places(call):
 
             """ Function requests category from user """
@@ -62,10 +62,9 @@ class BotNealestPlaces(BaseHandler):
             message_id = call.message.id
             self.bot.answer_callback_query(call.id)
             text = 'Бот покажет ближайшие туристические объекты\n'\
-                   '/low - ближайшие объекты\n'\
-                   '/high - наиболее удаленные объеты\n'\
-                   '/custom - объеты в диапазоне расстояния ОТ (метров) - ДО (метров)\n'\
-                   '/history - вывод последних 10 запросов'
+                   '/search - ближайшие объекты\n'\
+                   '/settings - настройки\n'\
+                   '/history - последние 10 запросов'
 
             self.bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=text)
             Updated_location.set_command(None)

@@ -8,20 +8,16 @@ class BotHelp(BaseHandler):
         @self.bot.message_handler(commands=['help'])
         def help(message):
             bot.send_message(message.chat.id, 'Бот покажет ближайшие туристические объекты\n'
-                                              'в радиусе 5км в выбранной категории\n'
-                                              '/low - ближайшие объекты\n'
-                                              '/high - наиболее удаленные объеты\n'
-                                              '/custom - объеты в диапазоне расстояния ОТ (метров) - ДО (метров)\n'
-                                              '- Список категорий - введите "0" в командах выше.\n'
+                                              '/search - ближайшие объекты\n'                                              
+                                              '/settings - настройки\n'
                                               '/history - последние 10 запросов')
 
         @self.bot.message_handler(commands=['start'])
         def start_message(message):
             bot.send_message(message.chat.id, 'Бот покажет ближайшие туристические объекты\n'
-                                              '/low - ближайшие объекты\n'
-                                              '/high - наиболее удаленные объеты\n'
-                                              '/custom - объеты в диапазоне расстояния ОТ (метров) - ДО (метров)\n'
-                                              '/history - вывод последних 10 запросов')
+                                              '/search - ближайшие объекты\n'                                              
+                                              '/settings - настройки\n'
+                                              '/history - последние 10 запросов')
 
             my_keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
             button_location = types.KeyboardButton(text='Обновить локацию', request_location=True)
