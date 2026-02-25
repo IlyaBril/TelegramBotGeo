@@ -17,6 +17,7 @@ def _make_response(method: str, url: str, headers: dict,
             params=params,
             timeout=timeout
         )
+        print(response.url)
 
     except Exception as err:  #ReadTimeout
         print('response no places', err)
@@ -26,7 +27,7 @@ def _make_response(method: str, url: str, headers: dict,
 
     if status_code == success:
         return response
-
+    print('status code', status_code)
     return status_code
 
 

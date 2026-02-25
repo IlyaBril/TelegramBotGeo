@@ -1,66 +1,59 @@
+from pyexpat import features
+
 import requests
 from tg_API.handle_location import Updated_location
-from site_API.core import url_geo, headers_geo, url_geo_rev
+from site_API.core import url_geo, headers_geo, url_geo_rev, url_places
 from site_API.utils.site_api_handler import SiteApiInterface
-
+from site_API.utils.serializers import FeaturesSchema, FinalSchema
 
 tourist_places = SiteApiInterface.get_tourist_places()
-
+features_schema = FeaturesSchema()
+final_schema = FinalSchema()
 
 class TouristPlaces:
-    def reverse_geo(self, lat: int, lon: int):
-        """
-        Ф-ция принимает на вход координаты, возвращает адрес.
-        Нужна, так как в response нет полного адреса объекта
-        """
 
-        url_geo_rev_2 = url_geo_rev + "lat=" + str(lat) + "&lon=" + str(lon)
-        resp = requests.get(url_geo_rev_2, headers=headers_geo)
-        resp = resp.json()['results'][0]['formatted']
-        return resp
-
-    def print_properties(self, response: list) -> str:
+    @staticmethod
+    def print_properties(response: list) -> str:
         """
         Ф-ция принимает на вход json ответ (response)
         по списоку категорий (args) возвращает ответ для бота
         """
-        args = ['name', 'address', 'distance']
-        category = {'name': 'Название', 'address': 'Адрес', 'distance': 'Расстояние'}
-        answer = ""
 
-        for key in response:
-            lat = key['properties']['lat']
-            lon = key['properties']['lon']
-            # по координатам получаем полный адрес
-            key['properties']['address'] = self.reverse_geo(lat, lon)
-            for i in args:
+        fields = {'name': 'Название', 'formatted': 'Адрес', 'distance': 'Расстояние'}
+        answer = ""
+        place_id = 0
+
+        for place in response:
+            answer = answer + str(place_id + 1) + "."
+            place_id += 1
+            for field_key, value in fields.items():
                 try:
-                    answer = answer + str(category[i]) + ': ' + str(key['properties'][i]) + '\n'
+                    answer = answer + str(fields[field_key]) + ': ' + str(place['properties'][field_key]) + '\n'
                 except Exception:  # Если в response нет такой категории, присваиваем  "-"
-                    answer = answer + str(category[i]) + ': ' + ' -  \n'
+                    answer = answer + str(fields[field_key]) + ': ' + ' -  \n'
             answer = answer + '\n'
         return answer
 
-    def provide_response(self) -> str:
-        # запрашивает ответ от API сайта
+    @staticmethod
+    def provide_response(params: dict) -> str:
+        """
+        Function performs GET request to url and returns text answer with places
+        :param params:
+        :return:
+        """
 
-        headers_geo["Accept"] = "application/json"
-        location = Updated_location.get_location()
-        location = str(location[1]) + ',' + str(location[0])
-        radius = Updated_location.get_radius_max()
-        categories = Updated_location.get_category()
-        limit = Updated_location.get_limit()
-        lang = "ru"
-        url_geo2 = "{}{},{}&categories={}&limit={}&lang={}&bias=proximity:{}".format(
-            url_geo, location, radius, categories, limit, lang, location)
-        print('provide respone url_geo2', url_geo2)
-        response = tourist_places("GET", url_geo2, headers_geo, timeout=5)
+        headers = {}
+        response = tourist_places("GET", url_places, headers=headers, timeout=5, params=params)
 
         if hasattr(response, "status_code"):
-            response = response.json()["features"]
+            response = response.json()
+            #print('provide response', response)
+
             # Получаем адреса объектов по координатам и говоим финальный ответ
 
-            response = TouristPlaces().print_properties(response)
+            text2 = final_schema.dump(response)
+            print('text 2 ', text2)
+
         else:
             return "Объектов с запрошенными параметрами не найдено"
-        return response
+        return text2

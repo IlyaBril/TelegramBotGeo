@@ -25,10 +25,10 @@ class InlineKeyboard:
         return markup
 
     @staticmethod
-    def repeate():
+    def repeat():
         markup = types.InlineKeyboardMarkup(row_width=2)
         buttons = [
-            ('repeate', 'Повторить?'),
+            ('repeat', 'Повторить?'),
             ('return', 'Вернуться'),
                    ]
         buttons = [types.InlineKeyboardButton(text, callback_data=data)
