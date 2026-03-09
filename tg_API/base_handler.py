@@ -11,3 +11,4 @@ class BaseHandler:
         """Handlers registration method
         To be redefined in child class"""
         pass
+

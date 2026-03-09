@@ -1,77 +1,114 @@
+import requests
 from database.common.models import db, History
 from database.core import db_write
-from tg_API.handle_location import Updated_location
-from tg_API.tourist_places import TouristPlaces
-from .base_handler import BaseHandler
-from .keyboards import InlineKeyboard
-import requests
 from PIL import Image
 from io import BytesIO
-from site_API.utils.serializers import RequestSchema, FeaturesSchema, FinalSchema
+from site_API.utils.serializers import RequestSchema, MapPictureSchema, FinalSchema
 from site_API.utils.site_api_handler import SiteApiInterface
-from site_API.core import url_geo, headers_geo, url_geo_rev, url_places
+from site_API.utils.models import user_settings
+from site_API.core import url_places, map_static_url
+from math import log
+from .keyboards import category_buttons
 
-tourist_places = SiteApiInterface.get_tourist_places()
+from .base_handler import BaseHandler
+from .keyboards import InlineKeyboard
+from .states import CustomStates
+from .help import BotHelp as bot_help
 
-from site_API.utils.serializers import bot_response
 
 schema = RequestSchema()
-picture_schema = FeaturesSchema()
+static_map_schema = MapPictureSchema()
 final_schema = FinalSchema()
-get_tourist_places = TouristPlaces
+tourist_places = SiteApiInterface.get_tourist_places()
 
 class BotNealestPlaces(BaseHandler):
-    """Handler returns nealest choosen tourists places"""
+    """Handler returns nearest chosen tourists places"""
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.bot_help = bot_help
 
     def register_handlers(self):
-        def get_category(message):
-            self.bot.send_message(message.chat.id, 'Выберите категорию',
-                                  reply_markup=InlineKeyboard.get_categoties())
-            Updated_location.set_command('get_category')
+        @self.bot.message_handler(content_types=['location'])
+        def handle_location(message):
+            chat_id = message.chat.id
+            user_id = message.from_user.id
+            user_settings[chat_id].lat = message.location.latitude
+            user_settings[chat_id].lon = message.location.longitude
+            self.bot.send_message(chat_id, text='Локация обновлена')
+            self.get_category(self, chat_id, user_id)
 
 
         @self.bot.message_handler(commands=['search'])
-        def low_execute(message):
-            get_category(message)
+        def search(message):
+            self.get_category(self, message.chat.id, message.from_user.id)
 
-        @self.bot.callback_query_handler(func=(lambda call: call) and (lambda message: Updated_location.get_command() == 'get_category'))
-        def get_nealest_places(call):
-
-            """ Function requests category from user """
+        @self.bot.callback_query_handler(func=lambda call: True, state=CustomStates.get_category)
+        def get_nearest_places(call):
+            """ Function requests returns message with nearest places by category
+             and map picture with markers """
 
             chat_id = call.message.chat.id
             message_id = call.message.id
+            user_id = call.from_user.id
+
             self.bot.answer_callback_query(call.id)
             self.bot.edit_message_text(chat_id=chat_id, message_id=message_id,
-                                       text="Готовится ответ ... ")
+                                       text=f"Категория {category_buttons.get(call.data)} \n"
+                                            f"Готовится ответ ... ")
 
-            bot_response.categories = call.data
+            # Set category chosen by user
+            user_settings[chat_id].categories = call.data
 
-            #Get tourists places
-            url_params = schema.dump(bot_response)
+            # Get row places list by category
+            url_params = schema.dump(user_settings[chat_id])
             headers = {}
-            print("url params", url_params)
             response = tourist_places("GET", url_places, headers=headers, timeout=5, params=url_params)
+            if not hasattr(response, "status_code"):
+                print('EMPTY')
+                return return_or_repeat(chat_id, user_id)
 
             response = response.json()
 
-            # Send picture
-            # Serialize to marker JSON
-            url_params = picture_schema.dump(response)
-            picture_url = "https://maps.geoapify.com/v1/staticmap?apiKey=3b6995fba84146909e2b65f0f8efacaf"
-            map_response = requests.request("POST", picture_url, json=url_params)
-            img_data = map_response.content
-            image = Image.open(BytesIO(img_data))
-            self.bot.send_photo(chat_id=chat_id, photo=image)
+            # Serialize to get markers JSON and request places map
+            static_map_url_params = static_map_schema.dump(response)
 
-            # Get list of places
+            ## Add map center coordinates and customer position marker
+            position_marker = {
+                "lat": user_settings[chat_id].lat,
+                "lon": user_settings[chat_id].lon,
+                "type": "circle",
+                "color": "#000099",
+                "size": "22",
+            }
+            static_map_url_params["markers"].append(position_marker)
+
+            # Add center coordinates to map
+            static_map_url_params["center"] = {
+                "lat": user_settings[chat_id].lat,
+                "lon": user_settings[chat_id].lon,
+            }
+
+
+            ### Add zoom adjust function ###
+            max_distance = max(map(lambda x: x['properties']['distance'], response['features']))
+            zoom = log(8000000/max_distance, 2)
+            print('max distance: ', max_distance/1000, "  ", zoom)
+            static_map_url_params["zoom"] = zoom
+
+            #Request and Send static map image to chat
+            static_map_response = requests.request("POST", map_static_url, json=static_map_url_params)
+            static_map_img_data = static_map_response.content
+            static_map_image = Image.open(BytesIO(static_map_img_data))
+            self.bot.send_photo(chat_id=chat_id, photo=static_map_image)
+
+            # Get final answer with requested list of places
             places_list = final_schema.dump(response)
-            self.bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=places_list)
-
+            self.bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=places_list, parse_mode='HTML')
 
             #Save request data to database
             db_write(db, History, {'request': places_list})
-            Updated_location.set_command('choose_action')
+            self.bot.delete_state(user_id, chat_id)
+
             self.bot.send_message(chat_id=chat_id, text='Повторить запрос или вернуться на главную страницу?',
                                   reply_markup=InlineKeyboard.repeat())
 
@@ -79,73 +116,41 @@ class BotNealestPlaces(BaseHandler):
         def repeat(call):
             chat_id = call.message.chat.id
             message_id = call.message.id
+            user_id = call.from_user.id
             self.bot.answer_callback_query(call.id)
             self.bot.edit_message_text(chat_id=chat_id, message_id=message_id, text="Возвращаемся")
-            Updated_location.set_command(None)
-            get_category(call.message)
+            self.get_category(self, chat_id, user_id)
 
         @self.bot.callback_query_handler(func=lambda call: call.data == 'return')
         def return_action(call):
             chat_id = call.message.chat.id
-            message_id = call.message.id
+            user_id = call.message.from_user.id
             self.bot.answer_callback_query(call.id)
-            text = 'Бот покажет ближайшие туристические объекты\n'\
-                   '/search - ближайшие объекты\n'\
-                   '/settings - настройки\n'\
-                   '/history - последние 10 запросов'
+            self.bot.delete_state(user_id, chat_id)
+            self.bot_help.start_message(self, chat_id)
 
-            self.bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=text)
-            Updated_location.set_command(None)
+        def return_or_repeat(chat_id, user_id):
+            self.bot.delete_state(user_id, chat_id)
+            self.bot.send_message(chat_id=chat_id, text='Объектов с запрошенными параметрами не найдено',
+                                  )
+            self.bot.send_message(chat_id=chat_id, text='Повторить запрос или вернуться на главную страницу?',
+                                  reply_markup=InlineKeyboard.repeat())
 
 
-        #test
-        @self.bot.message_handler(commands=['pic'])
-        def pic_execute(message):
-            #url="https://api-maps.yandex.ru/services/constructor/1.0/static/?um=constructor%3A3GbTRNmB8Pz5lk_2mngDAxWGCr7ZhJ8L&amp;lang=ru_RU"
-            #url = "https://maps.geoapify.com/v1/staticmap?style=osm-bright&width=600&height=400&center=lonlat:-122.304378,47.526022&zoom=14&marker=lonlat:-122.30021521160944,47.52683340049401;color:%23ff0000;size:42|lonlat:-122.30622335980286,47.523645683495744;color:%23ff0000;size:42|lonlat:-122.30609461377031,47.52761581051092;color:%23ff0000;size:42|lonlat:-122.30004355023252,47.5216749979148;color:%23ff0000;size:42|lonlat:-122.29691073010325,47.525674253090216;color:%23ff0000;size:42|lonlat:-122.30214640210025,47.52492079354127;color:%23ff0000;size:42&apiKey=3b6995fba84146909e2b65f0f8efacaf"
-            #self.bot.send_photo(chat_id=message.chat.id, photo=url)
-            url2 = "https://maps.geoapify.com/v1/staticmap?apiKey=3b6995fba84146909e2b65f0f8efacaf"
-            params = {
-                    "style": "osm-bright",
-                    "scaleFactor": 2,
-                    "width": 600,
-                    "height": 400,
-                    "center": {
-                        "lat": 47.527906,
-                        "lon": -122.300215
-                    },
-                    "zoom": 14,
-                    "markers": [
-                        {
-                            "lat": 47.52492079354127,
-                            "lon": -122.30214640210025,
-                            "color": "#ff0000",
-                            "size": "42",
-                            "text": "2",
-                            "contentsize": "22",
-                        },
-                        {
-                            "lat": 47.52819536596189,
-                            "lon": -122.30313345501769,
-                            "color": "#ff0000",
-                            "size": "42",
-                            "text": "3",
-                            "contentsize": "22",
-                        },
-                        {
-                            "lat": 47.52776069997742,
-                            "lon": -122.29476496289027,
-                            "color": "#ff0000",
-                            "size": "42",
-                            "text": "1",
-                            "contentsize" : "22",
-                        }
-                    ]
-                }
+        @self.bot.message_handler(commands=['cancel'])
+        def cancel_command(message):
+            user_id = message.from_user.id
+            chat_id = message.chat.id
+            self.bot.delete_state(user_id, chat_id)
+            self.bot.send_message(chat_id, "cancel")
 
-            from site_API.utils.models import params_2
-            response = requests.request("POST", url2, json=params_2)
-            #print(response)
-            img_data = response.content
-            image = Image.open(BytesIO(img_data))
-            self.bot.send_photo(chat_id=message.chat.id, photo=image)
+
+    @staticmethod
+    def get_category(self, chat_id, user_id):
+        """ Function requests category from user """
+
+        print("get category")
+
+        self.bot.set_state(user_id, CustomStates.get_category, chat_id)
+        self.bot.send_message(chat_id, 'Выберите категорию',
+                              reply_markup=InlineKeyboard.get_categoties())

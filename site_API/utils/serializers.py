@@ -1,9 +1,6 @@
 from marshmallow import Schema, fields, validate, ValidationError, post_dump
-from pprint import pprint
 from .test_response import t3
-from .models import URLFilter
-
-bot_response = URLFilter()
+from .models import user_settings
 
 
 class RequestSchema(Schema):
@@ -32,45 +29,29 @@ class MarkerCoordinatesSchema(Schema):
     size = fields.Str(dump_default ="42")
     text = fields.Str()
     contentsize = fields.Str(dump_default = "22")
-    #distance = fields.Int()
 
 
-class MapSchema(Schema):
+class MarkersListSchema(Schema):
     properties = fields.Nested(MarkerCoordinatesSchema)
 
 
-class FeaturesSchema(Schema):
-    features = fields.Pluck(MapSchema, field_name="properties",
+class MapPictureSchema(Schema):
+    features = fields.Pluck(MarkersListSchema, field_name="properties",
                             many=True, data_key="markers")
     style = fields.Str(dump_default="osm-bright")
     scaleFactor = fields.Int(dump_default=2)
     width = fields.Int(dump_default=600)
     height = fields.Int(dump_default=400)
-    zoom = fields.Int(dump_default=14)
-
+    zoom = fields.Float(dump_default=14.8)
 
     @post_dump
     def add_marker_id(self, data, **kwargs):
-        #add center coordinates to map
-        data["center"] = {
-                        "lat": bot_response.lat,
-                        "lon": bot_response.lon
-                    }
 
         #add sequence text to each marker
         if "markers" in data:
             for sequence, marker in enumerate(data["markers"]):
                 marker["text"] = str(sequence + 1)
-
-            #add customer position marker
-            position_marker = {
-                "lat": bot_response.lat,
-                "lon": bot_response.lon,
-                "type": "circle",
-                "color": "#000099",
-                "size": "22",
-            }
-            data["markers"].append(position_marker)
+            print()
         return data
 
 
@@ -84,7 +65,7 @@ class PlacesProperties(Schema):
     def text_cont(self, obj):
         #Concatinate data fields into one as response message
 
-        return ('.Наименование: {} \nАдрес: {}\n Расстояние: {} м.'.
+        return ('<b>.Наименование:</b> {} \n<b>Адрес:</b> {}\n <b>Расстояние:</b> {} м.\n ---'.
         format(
             obj.get("name", "-"),
             obj.get("formatted", "-"),
@@ -105,11 +86,11 @@ class FinalSchema(Schema):
         answer = ""
         if "places" in data:
             for numb, place in enumerate(data["places"]):
-                answer = answer + str(numb+1) + str(place["text_full"]) + "\n"
+                answer = answer + f'<b>{str(numb+1)}</b> {str(place["text_full"])}  \n'
             return str(answer)
 
 
 #Test
-schema2 = FeaturesSchema()
+schema2 = MapPictureSchema()
 result = schema2.dump(t3)
 #pprint(result)

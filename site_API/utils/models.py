@@ -2,17 +2,23 @@ from settings import site
 from pydantic import BaseModel, SecretStr
 
 
-class URLFilter(BaseModel):
+class URLFilterUnit(BaseModel):
     categories: str = 'entertainment.museum'
     lat: float = 55.755864
     lon: float = 37.617698
-    limit: int = 3
+    limit: int = 5
     radius: int = 5000
     conditions: str = "access"
     lang: str = "ru"
     apiKey: SecretStr = site.geo_api_key
     sort: str = "desc"
 
+
+class URLFilter:
+    def __init__(self):
+        self.user_settings = {}
+
+user_settings = {}
 
 params_2 = {'center': {'lat': 55.755864, 'lon': 37.617698},
  'height': 400,

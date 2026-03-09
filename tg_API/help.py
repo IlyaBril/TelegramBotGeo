@@ -1,39 +1,39 @@
 from telebot import types
 from tg_API.core import bot
 from .base_handler import BaseHandler
+from site_API.utils.models import user_settings, URLFilterUnit
 
+url_filter = URLFilterUnit()
 
 class BotHelp(BaseHandler):
-    def register_handlers(self):
-        @self.bot.message_handler(commands=['help'])
-        def help(message):
-            bot.send_message(message.chat.id, 'Бот покажет ближайшие туристические объекты\n'
-                                              '/search - ближайшие объекты\n'                                              
-                                              '/settings - настройки\n'
-                                              '/history - последние 10 запросов')
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
+
+    def register_handlers(self):
         @self.bot.message_handler(commands=['start'])
         def start_message(message):
-            bot.send_message(message.chat.id, 'Бот покажет ближайшие туристические объекты\n'
-                                              '/search - ближайшие объекты\n'                                              
-                                              '/settings - настройки\n'
-                                              '/history - последние 10 запросов')
+            chat_id = message.chat.id
+            if chat_id not in user_settings:
+                user_settings[chat_id] = url_filter
 
-            my_keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
+            self.start_message(chat_id)
+
+            keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
             button_location = types.KeyboardButton(text='Обновить локацию', request_location=True)
-            my_keyboard.add(button_location)
-
-        @self.bot.message_handler(commands=['hello-world'])
-        def start_message(message):
-            bot.send_message(message.chat.id, 'Привет! Бот покажет ближайшие туристические объекты.'
-             + '\nВведите команду или /help')
+            keyboard.add(button_location)
+            self.bot.send_message(chat_id, text='Для работы необходимо обновить локацию нажав на кнопку внизу',
+                                  reply_markup=keyboard)
 
 
-        @self.bot.message_handler(func=lambda message: True, content_types=['text'])
-        def wrong_first_enter(message):
-            if message.text.lower() == 'Привет':
-                bot.send_message(message.chat.id, 'Привет - привет!')
-                return
-            else:
-                bot.send_message(message.chat.id, 'Введите команду : \n/low\n/high\n/custom\n/history')
-                bot.send_message(message.chat.id, 'или /help')
+        @self.bot.message_handler(commands=['help'])
+        def help_command(message):
+            self.start_message(message.chat_id)
+
+
+
+
+    def start_message(self, chat_id):
+        self.bot.send_message(chat_id, 'Бот покажет ближайшие туристические объекты в радиусе 5 км\n'
+                                          '/search - ближайшие объекты\n'
+                                          )
