@@ -12,7 +12,7 @@ category_buttons  = {
     'public_transport': 'Транспорт',
     'beach': 'Пляжи',
     'amenity.toilet': 'Туалет',
-    '/help': 'help',
+    'emergency.ambulance_station': 'Медцентр',
 }
 
 
