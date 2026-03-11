@@ -32,11 +32,10 @@ class BotNealestPlaces(BaseHandler):
         def handle_location(message):
             chat_id = message.chat.id
             user_id = message.from_user.id
-            user_settings[chat_id].lat = message.location.latitude
-            user_settings[chat_id].lon = message.location.longitude
+            user_settings[user_id].lat = message.location.latitude
+            user_settings[user_id].lon = message.location.longitude
             self.bot.send_message(chat_id, text='Локация обновлена')
             self.get_category(self, chat_id, user_id)
-
 
         @self.bot.message_handler(commands=['search'])
         def search(message):
@@ -57,10 +56,10 @@ class BotNealestPlaces(BaseHandler):
                                             f"Готовится ответ ... ")
 
             # Set category chosen by user
-            user_settings[chat_id].categories = call.data
+            user_settings[user_id].categories = call.data
 
             # Get row places list by category
-            url_params = schema.dump(user_settings[chat_id])
+            url_params = schema.dump(user_settings[user_id])
             headers = {}
             response = tourist_places("GET", url_places, headers=headers, timeout=5, params=url_params)
             if not hasattr(response, "status_code"):
@@ -74,8 +73,8 @@ class BotNealestPlaces(BaseHandler):
 
             ## Add map center coordinates and customer position marker
             position_marker = {
-                "lat": user_settings[chat_id].lat,
-                "lon": user_settings[chat_id].lon,
+                "lat": user_settings[user_id].lat,
+                "lon": user_settings[user_id].lon,
                 "type": "circle",
                 "color": "#000099",
                 "size": "22",
@@ -84,8 +83,8 @@ class BotNealestPlaces(BaseHandler):
 
             # Add center coordinates to map
             static_map_url_params["center"] = {
-                "lat": user_settings[chat_id].lat,
-                "lon": user_settings[chat_id].lon,
+                "lat": user_settings[user_id].lat,
+                "lon": user_settings[user_id].lon,
             }
 
 

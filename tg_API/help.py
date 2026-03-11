@@ -9,13 +9,13 @@ class BotHelp(BaseHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-
     def register_handlers(self):
         @self.bot.message_handler(commands=['start'])
         def start_message(message):
             chat_id = message.chat.id
-            if chat_id not in user_settings:
-                user_settings[chat_id] = url_filter
+            user_id = message.from_user.id
+            if user_id not in user_settings:
+                user_settings[user_id] = url_filter
 
             self.start_message(chat_id)
 
@@ -29,8 +29,6 @@ class BotHelp(BaseHandler):
         @self.bot.message_handler(commands=['help'])
         def help_command(message):
             self.start_message(message.chat_id)
-
-
 
 
     def start_message(self, chat_id):
